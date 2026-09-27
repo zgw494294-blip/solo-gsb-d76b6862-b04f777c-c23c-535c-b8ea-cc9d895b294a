@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>齿轮系转速求解台</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <h1><span class="gear">⚙</span> 齿轮系转速求解台</h1>
+      <p class="sub">录入轴、传动关系与已知转速，以有理数精确联立 &mdash; 外啮合 / 内啮合 / 行星轮系 · 目标配齿 · 理想传动转矩平衡 · 传动链路追踪 · 啮合谐波重合诊断 · 最少制动轴方案</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card" id="card-shafts">
+      <div class="card-head">
+        <h2>① 轴 <span class="hint">2～12 根，唯一整数编号</span><span class="count" id="shaft-count"></span></h2>
+        <button class="btn" id="btn-add-shaft" data-act="add-shaft">＋ 添加轴</button>
+      </div>
+      <div id="shaft-list" class="rows"></div>
+    </section>
+
+    <section class="card" id="card-relations">
+      <div class="card-head">
+        <h2>② 传动关系 <span class="hint">1～24 条；齿数为 1～500 的整数</span><span class="count" id="relation-count"></span></h2>
+        <button class="btn" id="btn-add-relation" data-act="add-relation">＋ 添加关系</button>
+      </div>
+      <div id="relation-list" class="rows"></div>
+    </section>
+
+    <section class="card" id="card-known">
+      <div class="card-head">
+        <h2>③ 已知转速 <span class="hint">1～4 个；有符号整数或分数（rpm）</span><span class="count" id="known-count"></span></h2>
+        <button class="btn" id="btn-add-known" data-act="add-known">＋ 添加已知转速</button>
+      </div>
+      <div id="known-list" class="rows"></div>
+    </section>
+
+    <section class="card" id="card-options">
+      <div class="card-head">
+        <h2>④ 目标转速配齿 <span class="hint">选定一条关系的一个齿数与目标轴/转速，枚举 1～500 精确匹配</span></h2>
+        <button class="btn btn-primary" id="btn-options" data-act="gear-options">配 齿</button>
+      </div>
+      <div class="grid">
+        <div class="field"><label>传动关系（序号）</label>
+          <select id="opt-relation"></select></div>
+        <div class="field"><label>替换的齿数字段</label>
+          <select id="opt-field">
+            <option value="za">za</option>
+            <option value="zb">zb</option>
+            <option value="zs">zs</option>
+            <option value="zr">zr</option>
+          </select></div>
+        <div class="field"><label>目标轴</label>
+          <select id="opt-shaft"></select></div>
+        <div class="field"><label>目标转速（rpm，整数或分数，如 120、-3/2）</label>
+          <input type="text" id="opt-speed" value="25" /></div>
+      </div>
+      <p class="opt-note">将该齿数字段依次替换为 1～500 的整数逐一精确求解；矛盾候选舍弃，整体欠定时只要目标轴转速不依赖自由变量且精确等于目标值即保留。</p>
+    </section>
+
+    <section class="card" id="card-torque">
+      <div class="card-head">
+        <h2>⑤ 理想传动转矩平衡 <span class="hint">无损、无惯性：Aω = 0 的零空间中任意允许运动 v 均满足 τ·v = 0</span></h2>
+        <button class="btn btn-primary" id="btn-torque" data-act="torque-balance">平衡求解</button>
+      </div>
+      <div class="torque-cols">
+        <div class="torque-col">
+          <div class="sub-head">
+            <h3>已知外加转矩 <span class="hint">1～12 项；有符号整数或分数（N·m）</span><span class="count" id="torque-known-count"></span></h3>
+            <button class="btn" id="btn-add-torque-known" data-act="add-torque-known">＋ 添加转矩</button>
+          </div>
+          <div id="torque-known-list" class="rows"></div>
+        </div>
+        <div class="torque-col">
+          <div class="sub-head">
+            <h3>待求转矩轴 <span class="hint">1～12 根；不与已知转矩轴重复</span><span class="count" id="torque-unknown-count"></span></h3>
+            <button class="btn" id="btn-add-torque-unknown" data-act="add-torque-unknown">＋ 添加待求轴</button>
+          </div>
+          <div id="torque-unknown-list" class="rows"></div>
+        </div>
+      </div>
+      <p class="opt-note">同一轴不能同时已知和待求；未列出的轴外加转矩视为 0；已知转速不参与此计算。结果以有理数精确给出：无平衡解 / 唯一解 / 欠定（自由变量与各待求轴的精确仿射表达式）。</p>
+    </section>
+
+    <section class="card" id="card-path">
+      <div class="card-head">
+        <h2>⑥ 传动链路追踪 <span class="hint">每条关系是一步：外/内啮合连接 a/b，行星组连接 s/r/c；不使用转速或转矩</span></h2>
+        <button class="btn btn-primary" id="btn-path" data-act="trace-path">追踪链路</button>
+      </div>
+      <div class="grid">
+        <div class="field"><label>起点轴</label>
+          <select id="path-start"></select></div>
+        <div class="field"><label>终点轴</label>
+          <select id="path-end"></select></div>
+      </div>
+      <p class="opt-note">以经过的关系数为路径长度：返回最短链路总数、按每步（关系录入序号、到达轴录入序号）字典序最小的链路，以及所有最短链路必经的关系序号；并行关系分别计数，行星组不拆成三条啮合。起终点同轴时返回一条长度为零的空链路，不连通时返回零条。</p>
+    </section>
+
+    <section class="card" id="card-harmonics">
+      <div class="card-head">
+        <h2>⑦ 啮合谐波重合诊断 <span class="hint">基频 f = z·|ω|/60 Hz（行星组取 |ωs−ωc|），1～12 次谐波按精确频率找跨关系重合</span></h2>
+        <button class="btn btn-primary" id="btn-harmonics" data-act="mesh-harmonics">谐波诊断</button>
+      </div>
+      <p class="opt-note">复用上方轴、传动关系与已知转速（校验与“求解”一致）：外/内啮合基频 f = za·|ωa|/60 Hz，行星组基频 f = zs·|ωs−ωc|/60 Hz，全部有理数精确计算。模型无解时返回原有冲突定位；欠定时基频仍依赖自由变量的关系标为“未确定”且不参与比较，其余关系给出精确基频。对每条确定且非零的基频取 1～12 次谐波，按精确频率分组，只列出包含至少两条不同关系的重合组（组内按关系录入序号、谐波次数排序）；参与重合的关系在录入区紫色高亮。任何输入变更即清空诊断结果。</p>
+    </section>
+
+    <section class="card" id="card-brake">
+      <div class="card-head">
+        <h2>⑧ 最少制动轴方案 <span class="hint">只使用轴与传动关系：目标轴须恒不转动，保护轴必须仍可转动</span></h2>
+        <button class="btn btn-primary" id="btn-brake" data-act="brake-plans">求制动方案</button>
+      </div>
+      <div class="grid">
+        <div class="field"><label>目标轴（制动后在所有允许运动中转速恒为零）</label>
+          <select id="brake-target"></select></div>
+        <div class="field"><label>保护轴（必须保持可转，即存在其转速非零的允许运动）</label>
+          <select id="brake-protected"></select></div>
+      </div>
+      <div class="sub-head brake-check-head">
+        <h3>可制动轴 <span class="hint">勾选允许施加制动的轴；不得包含目标轴与保护轴</span><span class="count" id="brake-count"></span></h3>
+      </div>
+      <div id="brake-check-list" class="brake-checks"></div>
+      <p class="opt-note">对每个候选制动集合，把所勾选轴的转速置零（ω = 0），与外/内啮合、行星组三类关系组成齐次有理数方程；仅当全部允许运动中目标轴转速恒为零、且存在保护轴转速非零的允许运动时集合有效。枚举可制动轴的全部子集（含空集），返回制动轴数最少的所有方案：方案内按轴录入顺序，方案间按该顺序的轴列表字典序排列；空集本身有效时返回含一个空集合的方案列表，无任何有效方案时明确说明。任何输入变更即清空方案结果。</p>
+    </section>
+
+    <div class="action-bar">
+      <button class="btn btn-primary btn-lg" id="btn-solve" data-act="solve">求 解</button>
+    </div>
+
+    <section id="result" class="result" hidden></section>
+    <section id="options-result" class="result" hidden></section>
+    <section id="torque-result" class="result" hidden></section>
+    <section id="path-result" class="result" hidden></section>
+    <section id="harmonics-result" class="result" hidden></section>
+    <section id="brake-result" class="result" hidden></section>
+  </main>
+
+  <footer class="site-footer wrap">
+    齿轮系转速求解台 · FastAPI + 原生 HTML/CSS/JavaScript · 结果均为精确有理数（fractions）
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

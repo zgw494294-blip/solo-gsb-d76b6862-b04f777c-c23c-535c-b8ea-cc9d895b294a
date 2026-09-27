@@ -1,0 +1,461 @@
+:root {
+  --bg: #f4f6fa;
+  --panel: #ffffff;
+  --ink: #1f2733;
+  --ink-soft: #5b6675;
+  --line: #d9dee7;
+  --accent: #2f5d8f;
+  --accent-dark: #22466d;
+  --accent-soft: #e8f0f9;
+  --danger: #b23a3a;
+  --danger-bg: #fbecec;
+  --ok: #1f7a4d;
+  --ok-bg: #e9f6ef;
+  --warn: #8a611b;
+  --warn-bg: #fcf3e0;
+  --violet: #6a4fb3;
+  --violet-bg: #f1ebfa;
+  --radius: 10px;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+
+.site-header {
+  background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+  color: #fff;
+  padding: 26px 0 22px;
+  box-shadow: 0 2px 8px rgba(20, 40, 70, .18);
+}
+.site-header h1 { margin: 0; font-size: 26px; letter-spacing: 1px; }
+.site-header .gear { display: inline-block; margin-right: 6px; }
+.site-header .sub { margin: 6px 0 0; opacity: .88; font-size: 14px; }
+
+main { padding: 22px 20px 40px; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 3px rgba(30, 45, 70, .05);
+}
+
+.card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.card-head h2 { margin: 0; font-size: 17px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card-head .hint { font-size: 12px; font-weight: 400; color: var(--ink-soft); }
+.card-head .count {
+  font-size: 12px; font-weight: 600; color: var(--accent);
+  background: var(--accent-soft); border-radius: 999px; padding: 1px 10px;
+}
+
+.rows { display: flex; flex-direction: column; gap: 10px; }
+
+.row-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fbfcfe;
+}
+/* 无解冲突定位：命中的输入行高亮 */
+.row-item.conflict {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  box-shadow: 0 0 0 1px var(--danger);
+}
+.row-item.conflict .row-index { color: var(--danger); font-weight: 700; }
+.row-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.row-index {
+  font-size: 12px; color: var(--ink-soft);
+  min-width: 48px; font-family: var(--mono);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 14px;
+  margin-top: 10px;
+}
+.field { display: flex; flex-direction: column; gap: 3px; }
+.field label { font-size: 12px; color: var(--ink-soft); }
+
+input[type="number"], input[type="text"], select {
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: var(--mono);
+  background: #fff;
+  color: var(--ink);
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+input.invalid, select.invalid {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.btn {
+  border: 1px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.btn:hover:not(:disabled) { background: var(--accent-soft); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.btn-del {
+  border-color: #d8b3b3;
+  color: var(--danger);
+  margin-left: auto;
+}
+.btn-del:hover:not(:disabled) { background: var(--danger-bg); }
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) { background: var(--accent-dark); border-color: var(--accent-dark); }
+.btn-lg { font-size: 16px; padding: 10px 44px; letter-spacing: 4px; }
+
+.action-bar { display: flex; justify-content: center; margin: 24px 0 8px; }
+
+.equation {
+  margin-top: 8px;
+  padding: 6px 10px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border-radius: 6px;
+  min-height: 24px;
+}
+.equation.dim { color: var(--ink-soft); background: #f1f3f7; }
+
+/* ---------- 结果区 ---------- */
+.result {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin-top: 8px;
+  box-shadow: 0 1px 3px rgba(30, 45, 70, .05);
+}
+.banner {
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.banner.unique { background: var(--ok-bg); color: var(--ok); border: 1px solid #bfe3cf; }
+.banner.underdetermined { background: var(--warn-bg); color: var(--warn); border: 1px solid #ecd9ae; }
+.banner.inconsistent { background: var(--danger-bg); color: var(--danger); border: 1px solid #e6c1c1; }
+.banner .meta { font-weight: 400; font-size: 13px; }
+
+.free-note {
+  font-size: 13px; color: var(--ink-soft);
+  background: #f7f9fc; border: 1px dashed var(--line);
+  border-radius: 8px; padding: 8px 12px; margin-bottom: 14px;
+}
+.free-note code, .expr code { font-family: var(--mono); }
+
+table.speed-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.speed-table th, .speed-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 10px;
+  text-align: left;
+}
+.speed-table th { font-size: 12px; color: var(--ink-soft); background: #f7f9fc; }
+.speed-table td.num { font-family: var(--mono); }
+
+.badge {
+  display: inline-block;
+  font-size: 11px; font-weight: 600;
+  border-radius: 999px; padding: 1px 9px;
+  background: #eef1f6; color: var(--ink-soft);
+  margin-left: 8px;
+}
+.badge.free { background: var(--warn-bg); color: var(--warn); }
+.badge.known { background: var(--accent-soft); color: var(--accent-dark); }
+.badge.solved { background: var(--ok-bg); color: var(--ok); }
+
+/* 堆叠分数 */
+.frac { display: inline-flex; flex-direction: column; vertical-align: middle; margin: 0 3px; }
+.frac .f-num, .frac .f-den { padding: 0 5px; font-family: var(--mono); font-size: 13px; line-height: 1.25; text-align: center; }
+.frac .f-den { border-top: 1.5px solid currentColor; }
+.frac.whole { flex-direction: row; align-items: baseline; }
+.neg { margin-right: 1px; }
+
+.expr-list { display: flex; flex-direction: column; gap: 8px; }
+.expr {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+  border-bottom: 1px solid #eef1f5;
+  padding: 8px 4px;
+  font-size: 15px;
+}
+.expr .lhs { min-width: 92px; font-family: var(--mono); }
+.expr .rhs { font-family: var(--mono); display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
+.expr .unit { color: var(--ink-soft); font-size: 12px; margin-left: 8px; }
+
+.error-box {
+  background: var(--danger-bg);
+  border: 1px solid #e6c1c1;
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.error-box h3 { margin: 0 0 8px; font-size: 15px; }
+.error-box ul { margin: 0; padding-left: 20px; }
+.error-box li { margin: 3px 0; font-size: 13px; }
+
+/* 无解冲突定位：冲突条件清单 */
+.conflict-box {
+  border: 1px solid #e6c1c1;
+  background: #fff7f7;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.conflict-box h3 { margin: 0 0 8px; font-size: 15px; color: var(--danger); }
+.conflict-list { margin: 0; padding-left: 20px; }
+.conflict-list li { margin: 6px 0; font-size: 14px; }
+.conflict-list code { font-family: var(--mono); font-weight: 700; color: var(--danger); }
+.conflict-tag {
+  display: inline-block;
+  font-size: 11px; font-weight: 600;
+  border-radius: 999px; padding: 1px 9px;
+  background: var(--danger-bg); color: var(--danger);
+  border: 1px solid #e6c1c1;
+  margin-left: 8px;
+}
+.conflict-eq { font-family: var(--mono); margin-left: 8px; color: var(--ink); }
+.conflict-note { margin: 10px 0 0; font-size: 12px; color: var(--ink-soft); }
+
+/* ---------- 目标转速配齿 ---------- */
+.opt-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.banner.options { background: var(--accent-soft); color: var(--accent-dark); border: 1px solid #c3d6ea; }
+
+.options-meta { font-size: 13px; color: var(--ink-soft); margin: 4px 0 10px; }
+.options-meta strong { color: var(--accent-dark); font-size: 15px; }
+
+.options-table th:first-child, .options-table td:first-child { width: 130px; }
+.btn-apply {
+  min-width: 64px;
+  font-family: var(--mono);
+  font-weight: 700;
+  border-style: dashed;
+}
+.options-table tbody tr:hover { background: var(--accent-soft); }
+.options-table tbody tr:hover .btn-apply {
+  border-style: solid;
+  background: var(--accent);
+  color: #fff;
+}
+
+.apply-note {
+  font-size: 13px;
+  color: var(--ink-soft);
+  background: #f7f9fc;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0 0 12px;
+}
+.apply-note.applied {
+  color: var(--ok);
+  background: var(--ok-bg);
+  border: 1px solid #bfe3cf;
+}
+.apply-note code { font-family: var(--mono); }
+
+.options-empty h3 { margin: 0 0 6px; color: var(--warn); }
+.options-empty {
+  background: var(--warn-bg);
+  border-color: #ecd9ae;
+  color: var(--warn);
+}
+.options-empty p { margin: 0; font-size: 13px; }
+
+/* ---------- 理想传动转矩平衡 ---------- */
+.torque-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.sub-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.sub-head h3 {
+  margin: 0; font-size: 14px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.sub-head .hint { font-size: 12px; font-weight: 400; color: var(--ink-soft); }
+.sub-head .count {
+  font-size: 12px; font-weight: 600; color: var(--accent);
+  background: var(--accent-soft); border-radius: 999px; padding: 1px 10px;
+}
+
+@media (max-width: 720px) {
+  .torque-cols { grid-template-columns: 1fr; }
+}
+
+/* ---------- 传动链路追踪 ---------- */
+/* 所选链路经过的关系：蓝色高亮；所有最短链路必经的关系：绿色高亮 */
+.row-item.path-step {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.row-item.path-step .row-index { color: var(--accent-dark); font-weight: 700; }
+.row-item.path-essential {
+  border-color: var(--ok);
+  background: var(--ok-bg);
+  box-shadow: 0 0 0 1px var(--ok);
+}
+.row-item.path-essential .row-index { color: var(--ok); font-weight: 700; }
+
+.path-list { margin: 0 0 14px; padding: 0; list-style: none; }
+.path-step-item {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 6px 0;
+  font-size: 14px;
+  background: #fbfcfe;
+}
+.path-step-item.essential { border-color: #bfe3cf; background: var(--ok-bg); }
+.path-step-item .step-no { font-size: 12px; color: var(--ink-soft); min-width: 44px; }
+.path-step-item code { font-family: var(--mono); font-weight: 700; color: var(--accent-dark); }
+.path-step-item.essential code { color: var(--ok); }
+.path-tag {
+  display: inline-block;
+  font-size: 11px; font-weight: 600;
+  border-radius: 999px; padding: 1px 9px;
+  background: var(--accent-soft); color: var(--accent-dark);
+  border: 1px solid #c3d6ea;
+}
+.path-step-item.essential .path-tag {
+  background: #fff; color: var(--ok); border-color: #bfe3cf;
+}
+.path-step-text { font-family: var(--mono); }
+.path-teeth { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+
+/* ---------- 啮合谐波重合诊断 ---------- */
+/* 参与谐波重合组的关系：紫色高亮 */
+.row-item.harmonic {
+  border-color: var(--violet);
+  background: var(--violet-bg);
+  box-shadow: 0 0 0 1px var(--violet);
+}
+.row-item.harmonic .row-index { color: var(--violet); font-weight: 700; }
+
+.harmonics-table { margin-bottom: 16px; }
+.harmonic-list { margin: 0 0 14px; padding: 0; list-style: none; }
+.harmonic-group-item {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 6px 0;
+  font-size: 14px;
+  background: #fbfcfe;
+}
+.harmonic-freq {
+  display: inline-flex; align-items: center;
+  font-family: var(--mono); font-weight: 700; color: var(--violet);
+  background: var(--violet-bg); border: 1px solid #d9cdef;
+  border-radius: 999px; padding: 1px 12px;
+}
+.harmonic-members { font-family: var(--mono); }
+.harmonic-members code { font-weight: 700; color: var(--accent-dark); }
+
+/* ---------- 最少制动轴方案 ---------- */
+.brake-check-head { margin-top: 12px; }
+.brake-checks {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.brake-check {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 14px 4px 10px;
+  background: #fbfcfe;
+  font-size: 13px;
+  cursor: pointer;
+}
+.brake-check:not(.locked):hover { border-color: var(--accent); background: var(--accent-soft); }
+.brake-check.locked { opacity: .62; cursor: not-allowed; background: #f4f6fa; }
+.brake-check input { width: auto; }
+.brake-check .brake-shaft { font-family: var(--mono); }
+
+.brake-plan-list { margin: 0 0 14px; padding: 0; list-style: none; }
+.brake-plan-item {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 6px 0;
+  font-size: 14px;
+  background: #fbfcfe;
+}
+.brake-plan-item .step-no { font-size: 12px; color: var(--ink-soft); min-width: 48px; }
+.brake-plan-shafts { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.brake-chip {
+  display: inline-block;
+  font-family: var(--mono); font-weight: 700;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid #e6c1c1;
+  border-radius: 999px;
+  padding: 2px 12px;
+}
+.brake-chip.empty { color: var(--ink-soft); background: #eef1f6; border-color: var(--line); }
+
+.site-footer {
+  color: var(--ink-soft);
+  font-size: 12px;
+  text-align: center;
+  padding: 24px 0 30px;
+}
+
+@media (max-width: 560px) {
+  .site-header h1 { font-size: 21px; }
+  .grid { grid-template-columns: 1fr 1fr; }
+  .btn-lg { width: 100%; }
+}

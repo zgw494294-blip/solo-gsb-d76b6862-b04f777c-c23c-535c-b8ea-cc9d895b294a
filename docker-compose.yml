@@ -1,0 +1,7 @@
+services:
+  gear-solver:
+    build: .
+    container_name: gear-train-solver
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
