@@ -48,6 +48,15 @@ B 追加 ω_j=0 的单位约束行后做有理数 RREF——目标轴在所有�
 自由列系数（e_p 不在行空间中）。枚举可制动轴的全部子集（含空集），返回
 制动轴数最少的所有有效方案；方案内按轴录入顺序，方案间按该顺序的轴列表
 字典序排列。
+
+/api/sensor-plans（测速点布设）复用轴/关系/已知转速的全部校验与同一套
+RREF；模型无解时返回与 /api/solve 相同的不可再缩减冲突集。测速读数尚未知，
+把每根选中轴视为可补充的转速约束 ω_j = r_j：对任意相容读数，全部轴转速
+唯一确定 ⟺ 系数矩阵 [关系行; 已知行; 测速单位行] 的秩等于轴数（秩只取决
+于系数部分，与读数取值无关）。枚举候选轴的全部子集（含空集），返回测点
+数最少的所有有效方案；方案内按轴录入顺序，方案间按该顺序的轴列表字典序
+排列。当前已唯一确定时返回含空集合的方案；候选轴全部用上仍不能定解时
+明确返回无方案。已知转速轴不得作为候选。
 """
 
 from collections import deque
@@ -149,6 +158,14 @@ class BrakePlansRequest(BaseModel):
     target: int | str | None = None    # 目标轴（制动后须恒不转动）
     protected: int | str | None = None  # 保护轴（必须仍可转动）
     brakeable: list[int | str | None] | None = None  # 可制动轴（不含目标轴、保护轴）
+
+
+class SensorPlansRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    shafts: list[Shaft] | None = None
+    relations: list[Relation] | None = None
+    known: list[KnownSpeed] | None = None
+    sensors: list[int | str | None] | None = None  # 可增设测速点的轴（不含已知转速轴）
 
 
 def _parse_teeth(name: str, value: object, errors: list[str]) -> int | None:
@@ -1308,4 +1325,163 @@ def brake_plans(req: BrakePlansRequest) -> dict:
             f"最少需要制动 {min_size} 根轴，有 {len(best)} 个并列最优方案；每个方案下目标轴 "
             f"{target_sid} 在所有允许运动中转速恒为零，且存在保护轴 {protected_sid} 转速非零的允许运动。"
         ),
+    }
+
+
+def _sensor_set_valid(
+    rows: list[list[Fraction]],
+    n: int,
+    sensor_cols: list[int],
+) -> bool:
+    """判定一组测速点是否使全部轴转速在任意相容读数下唯一确定（全程有理数）。
+
+    在“传动关系 + 已知转速”的增广行上，为每根测速轴追加单位行 ω_j = r_j
+    （读数尚未知，常数列取值不影响系数矩阵的秩，这里置 0）。增广系统对任意
+    相容读数都有唯一解 ⟺ 系数矩阵的秩等于轴数 n——秩只取决于系数部分，
+    与读数取值无关，故该判定对任意相容读数成立。
+    """
+    mat = [row[:] for row in rows]
+    for j in sensor_cols:
+        unit = [Fraction(0)] * (n + 1)
+        unit[j] = Fraction(1)
+        mat.append(unit)
+    return len(_rref(mat, n)) == n
+
+
+def sensor_plans(req: SensorPlansRequest) -> dict:
+    """测速点布设：枚举可增设测速点的轴的子集，求测点数最少的有效方案。
+
+    轴、传动关系与已知转速的校验和 /api/solve 完全复用；模型无解时返回与
+    /api/solve 相同的不可再缩减冲突集。测速读数尚未知，把每根选中轴视为可
+    补充的转速约束 ω_j = r_j：对任意相容读数，全部轴转速唯一确定 ⟺ 系数
+    矩阵 [关系行; 已知行; 测速单位行] 的秩等于轴数（秩与常数列无关，判定
+    见 _sensor_set_valid）。枚举候选轴的全部子集（含空集），返回测点数最
+    少的所有有效方案；方案内按轴录入顺序，方案间按该顺序的轴列表字典序
+    排列。当前已唯一确定时返回含空集合的方案；候选轴全部用上仍不能定解时
+    明确返回无方案。候选轴重复、未在轴列表中定义或为已知转速轴时返回
+    HTTP 400。
+    """
+    prepared = _prepare(req)
+    shaft_ids = prepared["shaft_ids"]
+    index = prepared["index"]
+    n = prepared["n"]
+    rows = prepared["rows"]
+    row_tags = prepared["row_tags"]
+
+    # 已知转速轴（已通过 _prepare 校验，全部合法）：不得作为测速点候选
+    known_ids = {_parse_int(ks.shaft) for ks in req.known or []}
+
+    errors: list[str] = []
+
+    # ---------- 可增设测速点的轴：可空（此时只有空集一个候选） ----------
+    if req.sensors is None:
+        errors.append("缺少可增设测速点的轴列表 sensors（不勾选任何轴时应传空数组）")
+        sensor_sids: list[int] = []
+    else:
+        sensor_sids = []
+        seen_sensor: set[int] = set()
+        for k, raw in enumerate(req.sensors):
+            sid = _parse_int(raw)
+            if sid is None:
+                errors.append(f"测速点候选 {k + 1}：轴编号非法")
+                continue
+            if sid not in index:
+                errors.append(f"测速点候选 {k + 1}：轴 {sid} 未在轴列表中定义")
+                continue
+            if sid in seen_sensor:
+                errors.append(f"测速点候选 {k + 1}：轴 {sid} 重复勾选")
+                continue
+            if sid in known_ids:
+                errors.append(f"测速点候选 {k + 1}：轴 {sid} 已录入已知转速，不能作为测速点候选")
+                continue
+            seen_sensor.add(sid)
+            sensor_sids.append(sid)
+
+    if errors:
+        raise HTTPException(status_code=400, detail={"errors": errors})
+
+    # ---------- 高斯-若尔当消元（与 /api/solve 同一套 RREF） ----------
+    mat = [row[:] for row in rows]
+    pivot_cols = _rref(mat, n)
+
+    if any(all(row[j] == 0 for j in range(n)) and row[n] != 0 for row in mat):
+        # 无解：删除法定位不可再缩减的冲突条件集（与 /api/solve 相同）
+        kept = _minimize_conflict(rows, n)
+        return {
+            "status": "inconsistent",
+            "shafts": shaft_ids,
+            "message": "方程组出现矛盾方程 0 = 非零常数，该齿轮系无解。",
+            "conflict": [
+                {"type": row_tags[j][0], "index": row_tags[j][1]} for j in kept
+            ],
+        }
+
+    rank = len(pivot_cols)
+    pivot_set = set(pivot_cols)
+    free_cols = [j for j in range(n) if j not in pivot_set]
+    free_count = len(free_cols)
+
+    # 候选轴按轴录入顺序排列：子集枚举、方案内排序与字典序均以此为准
+    sensor_sids.sort(key=lambda s: index[s])
+    sensor_cols = [index[s] for s in sensor_sids]
+
+    # ---------- 枚举全部子集（共 2^k，k ≤ 轴数−1 ≤ 11），按规模从小到大 ----------
+    # 每追加一条测速单位行秩至多增加 1，故最少测点数 ≥ 当前未定自由度，从此起步
+    candidates = 1 << len(sensor_cols)
+    best: list[tuple[int, ...]] = []
+    min_size: int | None = None
+    for size in range(free_count, len(sensor_cols) + 1):
+        found = [
+            tuple(cols)
+            for cols in combinations(sensor_cols, size)
+            if _sensor_set_valid(rows, n, list(cols))
+        ]
+        if found:  # 按规模升序：首个出现有效集合的规模即最少测点数
+            best = found
+            min_size = size
+            break
+
+    base = {
+        "shafts": shaft_ids,
+        "rank": rank,
+        "free_count": free_count,
+        "free_shafts": [shaft_ids[c] for c in free_cols],
+        "known_shafts": [sid for sid in shaft_ids if sid in known_ids],
+        "sensors": sensor_sids,
+        "candidate_count": candidates,
+    }
+
+    if min_size is None:
+        return {
+            **base,
+            "status": "none",
+            "min_sensors": None,
+            "count": 0,
+            "plans": [],
+            "message": (
+                f"当前未定自由度为 {free_count}，在全部 {candidates} 个候选测速点集合"
+                "（含空集）中，没有任何集合能使全部轴转速在任意相容读数下唯一确定"
+                "（可增设测速点的轴不足）。请勾选更多候选轴后重试。"
+            ),
+        }
+
+    best.sort()  # 按轴录入位置的轴列表字典序
+    if min_size == 0:
+        message = (
+            "当前模型已唯一确定全部轴转速（未定自由度 0）：空集即为最优方案，"
+            f"无需增设测速点。候选测速集合共 {candidates} 个（含空集）。"
+        )
+    else:
+        message = (
+            f"当前未定自由度为 {free_count}，候选测速集合共 {candidates} 个（含空集），"
+            f"按测点数由少到多评估：最少需要增设 {min_size} 个测速点，有 {len(best)} 个"
+            "并列最优方案；每个方案下，对任意相容的测速读数，全部轴转速均可唯一确定。"
+        )
+    return {
+        **base,
+        "status": "ok",
+        "min_sensors": min_size,
+        "count": len(best),
+        "plans": [[shaft_ids[c] for c in cols] for cols in best],
+        "message": message,
     }

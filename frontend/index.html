@@ -10,7 +10,7 @@
   <header class="site-header">
     <div class="wrap">
       <h1><span class="gear">⚙</span> 齿轮系转速求解台</h1>
-      <p class="sub">录入轴、传动关系与已知转速，以有理数精确联立 &mdash; 外啮合 / 内啮合 / 行星轮系 · 目标配齿 · 理想传动转矩平衡 · 传动链路追踪 · 啮合谐波重合诊断 · 最少制动轴方案</p>
+      <p class="sub">录入轴、传动关系与已知转速，以有理数精确联立 &mdash; 外啮合 / 内啮合 / 行星轮系 · 目标配齿 · 理想传动转矩平衡 · 传动链路追踪 · 啮合谐波重合诊断 · 最少制动轴方案 · 测速点布设</p>
     </div>
   </header>
 
@@ -126,6 +126,18 @@
       <p class="opt-note">对每个候选制动集合，把所勾选轴的转速置零（ω = 0），与外/内啮合、行星组三类关系组成齐次有理数方程；仅当全部允许运动中目标轴转速恒为零、且存在保护轴转速非零的允许运动时集合有效。枚举可制动轴的全部子集（含空集），返回制动轴数最少的所有方案：方案内按轴录入顺序，方案间按该顺序的轴列表字典序排列；空集本身有效时返回含一个空集合的方案列表，无任何有效方案时明确说明。任何输入变更即清空方案结果。</p>
     </section>
 
+    <section class="card" id="card-sensor">
+      <div class="card-head">
+        <h2>⑨ 测速点布设 <span class="hint">测速读数尚未知：把勾选轴视为可补充的转速约束，按有理数矩阵的秩判定任意相容读数下全部轴转速能否唯一确定</span></h2>
+        <button class="btn btn-primary" id="btn-sensor" data-act="sensor-plans">求测速方案</button>
+      </div>
+      <div class="sub-head sensor-check-head">
+        <h3>可增设测速点的轴 <span class="hint">勾选允许增设测速点的轴；不得包含已知转速轴</span><span class="count" id="sensor-count"></span></h3>
+      </div>
+      <div id="sensor-check-list" class="sensor-checks"></div>
+      <p class="opt-note">复用上方轴、传动关系与已知转速（校验与“求解”一致）；模型无解时返回原有冲突定位。对每个候选测速集合，把选中轴视为可补充的转速约束 ω = 读数（读数未知）：系数矩阵 [关系行；已知行；测速单位行] 的有理数秩等于轴数时，任意相容读数下全部轴转速都能唯一确定。枚举勾选轴的全部子集（含空集），返回测点数最少的所有有效方案：方案内按轴录入顺序，方案间按该顺序的轴列表字典序排列；当前已唯一确定时返回含空集合的方案，候选轴全部用上仍不足时明确返回无方案。任何输入变更即清空方案结果。</p>
+    </section>
+
     <div class="action-bar">
       <button class="btn btn-primary btn-lg" id="btn-solve" data-act="solve">求 解</button>
     </div>
@@ -136,6 +148,7 @@
     <section id="path-result" class="result" hidden></section>
     <section id="harmonics-result" class="result" hidden></section>
     <section id="brake-result" class="result" hidden></section>
+    <section id="sensor-result" class="result" hidden></section>
   </main>
 
   <footer class="site-footer wrap">

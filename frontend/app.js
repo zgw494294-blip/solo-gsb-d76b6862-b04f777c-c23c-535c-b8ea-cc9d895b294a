@@ -25,6 +25,8 @@ const state = {
   path: { start: '1', end: '3' },
   // 最少制动轴方案：目标轴、保护轴（互异）与勾选的可制动轴（不含前两者）
   brake: { target: '4', protected: '3', brakeable: ['1', '2'] },
+  // 测速点布设：勾选的可增设测速点的轴（不含已知转速轴）
+  sensor: { selected: ['3', '4'] },
 };
 
 // 各关系类型允许替换的齿数字段
@@ -308,6 +310,7 @@ function renderAll() {
   renderTorque();
   renderPath();
   renderBrake();
+  renderSensor();
 }
 
 // 传动链路追踪表单：起点/终点轴；轴被删除导致选择悬空时收回首/末根轴
@@ -351,6 +354,33 @@ function renderBrake() {
   }).join('');
   $('#brake-check-list').innerHTML = checks;
   $('#brake-count').textContent = `${b.brakeable.length} / ${Math.max(state.shafts.length - 2, 0)}`;
+}
+
+// 测速点布设表单：每根轴一个复选项；已知转速轴不可作为候选（锁定并剔除）。
+function renderSensor() {
+  const ids = state.shafts.map(String);
+  const knownSet = new Set(
+    state.known.map((k) => parseInt10(k.shaft)).filter((x) => x !== null).map(String)
+  );
+  state.sensor.selected = state.sensor.selected.filter(
+    (s) => ids.includes(String(s)) && !knownSet.has(String(s))
+  );
+
+  const checks = state.shafts.map((id) => {
+    const sid = String(id);
+    const locked = knownSet.has(sid);
+    const checked = !locked && state.sensor.selected.map(String).includes(sid);
+    return `
+      <label class="sensor-check${locked ? ' locked' : ''}">
+        <input type="checkbox" data-sensor-shaft="${esc(sid)}" ${checked ? 'checked' : ''}
+               ${locked ? 'disabled' : ''} />
+        <span class="sensor-shaft">轴 ${esc(sid)}</span>
+        ${locked ? '<span class="badge">已知转速</span>' : ''}
+      </label>`;
+  }).join('');
+  $('#sensor-check-list').innerHTML = checks;
+  const eligible = state.shafts.filter((id) => !knownSet.has(String(id))).length;
+  $('#sensor-count').textContent = `${state.sensor.selected.length} / ${eligible}`;
 }
 
 /* ============================== 输入交互 ============================== */
@@ -399,6 +429,13 @@ function clearBrakeResult() {
   box.innerHTML = '';
 }
 
+// 测速方案结果同为独立区域，随任何录入变化清空
+function clearSensorResult() {
+  const box = $('#sensor-result');
+  box.hidden = true;
+  box.innerHTML = '';
+}
+
 function clearAllResults() {
   clearResult();
   clearOptionsResult();
@@ -406,6 +443,7 @@ function clearAllResults() {
   clearPathResult();
   clearHarmonicsResult();
   clearBrakeResult();
+  clearSensorResult();
 }
 
 function clearConflictHighlights() {
@@ -535,6 +573,8 @@ document.addEventListener('click', (e) => {
     void runMeshHarmonics();
   } else if (act === 'brake-plans') {
     void runBrakePlans();
+  } else if (act === 'sensor-plans') {
+    void runSensorPlans();
   } else if (act === 'apply-option') {
     applyGearOption(btn.dataset.relation, btn.dataset.field, btn.dataset.teeth);
   }
@@ -600,6 +640,7 @@ function onFieldChange(e) {
   } else if (section === 'known') {
     state.known[index][name] = el.value;
     if (name === 'speed') el.classList.toggle('invalid', !parseSpeed(el.value));
+    if (name === 'shaft') renderSensor(); // 已知转速轴变化后更新测速点候选的锁定状态
   } else if (section === 'tknown') {
     state.torque.known[index][name] = el.value;
     if (name === 'torque') el.classList.toggle('invalid', !parseTorque(el.value));
@@ -677,6 +718,20 @@ document.addEventListener('change', (e) => {
   }
   $('#brake-count').textContent =
     `${state.brake.brakeable.length} / ${Math.max(state.shafts.length - 2, 0)}`;
+});
+
+// 测速点候选轴复选框（事件委托，重渲染后仍然生效）
+document.addEventListener('change', (e) => {
+  const cb = e.target.closest('input[data-sensor-shaft]');
+  if (!cb) return;
+  clearAllResults();
+  const sid = cb.dataset.sensorShaft;
+  if (cb.checked) {
+    if (!state.sensor.selected.map(String).includes(sid)) state.sensor.selected.push(sid);
+  } else {
+    state.sensor.selected = state.sensor.selected.filter((s) => String(s) !== sid);
+  }
+  renderSensor(); // 重算勾选计数（候选随已知转速轴锁定而变）
 });
 
 async function runGearOptions() {
@@ -1482,6 +1537,115 @@ function renderBrakeResult(data) {
     <div class="options-meta">共 <strong>${plans.length}</strong> 个并列最优方案
     （方案内按轴录入顺序，方案间按该顺序的轴列表字典序排列）</div>
     <ol class="brake-plan-list">${items}</ol>
+    <div class="free-note">${esc(data.message || '')}</div>`;
+}
+
+/* ============================== 测速点布设 ============================== */
+
+async function runSensorPlans() {
+  const btn = $('#btn-sensor');
+  const box = $('#sensor-result');
+  btn.disabled = true;
+  btn.textContent = '枚举中…';
+  clearSensorResult();
+  box.hidden = false;
+  try {
+    const base = buildPayload(); // 轴/传动关系/已知转速与“求解”完全相同
+    const payload = {
+      ...base,
+      sensors: state.sensor.selected.map((s) => parseInt10(s)),
+    };
+    const resp = await fetch('/api/sensor-plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      renderSensorErrors(extractErrors(resp.status, data));
+    } else {
+      renderSensorResult(data, payload);
+    }
+  } catch (err) {
+    renderSensorErrors([`网络或服务异常：${err.message}`]);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '求测速方案';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function renderSensorErrors(errors) {
+  const box = $('#sensor-result');
+  box.innerHTML = `
+    <div class="error-box">
+      <h3>测速点布设输入有误，共 ${errors.length} 项：</h3>
+      <ul>${errors.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>
+    </div>`;
+}
+
+function renderSensorResult(data, payload) {
+  const box = $('#sensor-result');
+  if (data.status === 'inconsistent') {
+    // 模型无解：与“求解”相同的冲突定位展示（红色高亮对应输入行）
+    const conflict = Array.isArray(data.conflict) ? data.conflict : [];
+    const items = conflict.map((c) => conflictItemHTML(c, payload)).join('');
+    box.innerHTML = `
+      <div class="banner inconsistent">✕ 无解
+        <span class="meta">转速方程组矛盾，无法布设测速点；已定位 ${conflict.length} 条相互冲突的条件：该集合本身无解，删去其中任意一条即恢复有解。</span>
+      </div>
+      <p>${esc(data.message || '方程组矛盾，该齿轮系无解。')}</p>
+      <div class="conflict-box">
+        <h3>冲突条件（按录入顺序，不可再缩减）</h3>
+        <ul class="conflict-list">${items}</ul>
+        <p class="conflict-note">对应输入行已用红色高亮标出；修改或删除其中任一条件后重新布设即可。</p>
+      </div>`;
+    highlightConflict(conflict);
+    return;
+  }
+
+  const plans = Array.isArray(data.plans) ? data.plans : [];
+  const freeText = data.free_count > 0
+    ? `当前未定自由度 = ${esc(data.free_count)}（自由轴：${(data.free_shafts || []).map((s) => `轴 ${esc(s)}`).join('、')}）`
+    : '当前未定自由度 = 0（模型已唯一确定全部轴转速）';
+  const head = `
+    <div class="banner ${data.status === 'ok' ? 'unique' : 'underdetermined'}">
+      ${data.status === 'ok'
+        ? `✓ 最少测点数 = ${esc(data.min_sensors)}`
+        : '△ 无可行测速方案'}
+      <span class="meta">${freeText}；共枚举 ${esc(data.candidate_count)} 个候选测速点集合（含空集）。</span>
+    </div>
+    <div class="free-note">可增设测速点的轴：${
+      (data.sensors || []).length
+        ? (data.sensors || []).map((s) => `轴 ${esc(s)}`).join('、')
+        : '无（未勾选任何轴，仅评估空集）'
+    }；已知转速轴（${(data.known_shafts || []).map((s) => `轴 ${esc(s)}`).join('、') || '无'}）不可作为候选。
+    判定基于“关系 + 已知转速 + 测速单位行”系数矩阵的有理数秩：秩等于轴数时，任意相容读数下全部轴转速唯一确定。</div>`;
+
+  if (data.status !== 'ok') {
+    box.innerHTML = `${head}
+      <div class="error-box options-empty">
+        <h3>无测速方案</h3>
+        <p>${esc(data.message || '没有任何候选测速点集合能使全部轴转速唯一确定。')}</p>
+      </div>`;
+    return;
+  }
+
+  const items = plans.map((plan, i) => {
+    const shafts = plan.length
+      ? plan.map((s) => `<span class="sensor-chip">轴 ${esc(s)}</span>`).join('')
+      : '<span class="sensor-chip empty">空集（无需增设测速点）</span>';
+    return `
+      <li class="sensor-plan-item">
+        <span class="step-no">方案 ${i + 1}</span>
+        <span class="sensor-plan-shafts">${shafts}</span>
+        <span class="badge solved">${plan.length} 个测速点</span>
+      </li>`;
+  }).join('');
+  box.innerHTML = `${head}
+    <div class="options-meta">共 <strong>${plans.length}</strong> 个并列最优方案
+    （方案内按轴录入顺序，方案间按该顺序的轴列表字典序排列）</div>
+    <ol class="sensor-plan-list">${items}</ol>
     <div class="free-note">${esc(data.message || '')}</div>`;
 }
 
