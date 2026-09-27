@@ -447,6 +447,19 @@ table.speed-table {
 }
 .brake-chip.empty { color: var(--ink-soft); background: #eef1f6; border-color: var(--line); }
 
+/* ---------- 测速点布设 ---------- */
+/* 复用最少制动轴方案的圆角复选芯片与方案列表布局；测速轴芯片用主题蓝 */
+.sensor-check-head { margin-top: 12px; }
+.sensor-chip {
+  display: inline-block;
+  font-family: var(--mono); font-weight: 700;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border: 1px solid #c3d6ea;
+  border-radius: 999px;
+  padding: 2px 12px;
+}
+
 .site-footer {
   color: var(--ink-soft);
   font-size: 12px;
